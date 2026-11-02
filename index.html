@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="description" content="AppsWeb — small, focused, offline-first web tools. Time Note: log video timestamps and export them as .txt.">
 <title>AppsWeb</title>
@@ -14,6 +14,12 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0}
+html,body{
+  touch-action:manipulation;
+  -webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%;
+  overscroll-behavior:none;
+}
+a,button,.card{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
 body{
   background:#050505;color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -103,5 +109,11 @@ body{
 
   <div class="foot">Time Note works offline and saves on your device. No account, no tracking, no ads.</div>
 </div>
+<script>
+['gesturestart','gesturechange','gestureend'].forEach(function(t){
+  document.addEventListener(t,function(e){e.preventDefault();},{passive:false});
+});
+document.addEventListener('dblclick',function(e){e.preventDefault();},{passive:false});
+</script>
 </body>
 </html>
