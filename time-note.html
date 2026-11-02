@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="description" content="Time Note — log video timestamps on a 20-key pad, attach a link per clip, export as .txt.">
+<title>Time Note · AppsWeb</title>
+<style>/* ── AppsWeb · Time Note — palette + metrics from NoteBox 2 v2.16 ── */
+:root{
+  --bg:#000000; --bar:#0a0a0a; --card:#101010; --pill:#1a1a1a; --border:#2a2a2a;
+  --text:#ffffff; --muted:#888888; --dim:#555555;
+  --blue:#3b82f6; --purple:#8b5cf6; --green:#10b981; --red:#ef4444;
+  --key:#333333; --key-orange:#FF9500; --key-red:#CC2200; --key-green:#1a7a1a;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{
+  background:#050505;color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  display:flex;align-items:center;justify-content:center;overscroll-behavior:none;
+}
+.app{
+  position:relative;width:100%;max-width:430px;height:100dvh;max-height:920px;
+  background:var(--bg);display:flex;flex-direction:column;overflow:hidden;
+}
+@media (min-width:520px){
+  body{background:radial-gradient(120% 90% at 50% 0%,#141414,#050505 70%)}
+  .app{height:94dvh;border-radius:26px;border:1px solid #1e1e1e;box-shadow:0 30px 80px rgba(0,0,0,.8)}
+}
+
+/* ── A · action bar ─────────────────────────────────────────────── */
+.bar-a{
+  display:flex;align-items:center;gap:5px;padding:8px 10px;background:var(--bar);
+  padding-top:calc(8px + env(safe-area-inset-top));
+}
+.back{
+  flex:0 0 auto;width:36px;height:36px;border-radius:50%;background:var(--pill);
+  border:1px solid var(--border);color:#fff;font-size:24px;line-height:1;
+  display:grid;place-items:center;padding-bottom:3px;cursor:pointer;
+}
+.back:active{transform:scale(.94)}
+.spacer{flex:1 1 auto}
+.pill{
+  flex:0 0 auto;height:34px;padding:0 10px;border-radius:10px;background:var(--pill);
+  border:1px solid rgba(255,255,255,.13);color:#fff;font-size:11.5px;font-weight:700;
+  letter-spacing:.04em;display:grid;place-items:center;cursor:pointer;font-family:inherit;
+}
+.pill:active{transform:scale(.96)}
+.pill.blue{background:var(--blue);border-color:rgba(255,255,255,.22)}
+.pill.purple{background:var(--purple);border-color:rgba(255,255,255,.22)}
+.pill.icon{width:34px;padding:0;font-size:15px}
+.pill.off{opacity:.38}
+
+/* ── B · status bar ─────────────────────────────────────────────── */
+.bar-b{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  height:35px;padding:0 16px;background:var(--bar);border-top:1px solid #141414;
+  border-bottom:1px solid var(--border);
+  font-size:13px;color:var(--muted);white-space:nowrap;
+}
+.stat{display:inline-flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums}
+.stat.warn{color:#FF4444}
+.stat svg{width:13px;height:13px;flex:0 0 auto;opacity:.9}
+
+/* ── C · log ────────────────────────────────────────────────────── */
+.log{
+  flex:1 1 auto;overflow-y:auto;padding:16px 16px 8px;background:var(--bg);
+  font-family:var(--mono);font-size:18px;line-height:1.45;color:var(--text);
+  -webkit-overflow-scrolling:touch;
+}
+.log::-webkit-scrollbar{width:0}
+.entry{margin:0}
+.hdr{white-space:pre}
+.clips{white-space:pre-wrap;word-break:break-word;min-height:26px}
+.linkrow{display:flex;align-items:center;gap:8px;margin:1px 0 6px}
+.link{
+  flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px;
+  background:none;border:none;padding:0;cursor:pointer;font-family:var(--mono);
+  font-size:14px;color:var(--dim);text-align:left;line-height:1.35;
+}
+.link.set{color:var(--green)}
+.link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link svg{width:14px;height:14px;flex:0 0 auto;color:var(--blue)}
+.quick{
+  flex:0 0 auto;width:32px;height:32px;border-radius:9px;background:#101a2b;
+  border:1px solid #1e3a63;color:#8ab6ff;display:grid;place-items:center;
+  cursor:pointer;padding:0;transition:transform .08s,background .12s,border-color .12s;
+}
+.quick.armed{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.22);animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(59,130,246,.10)}}
+.paste-sink{position:fixed;top:-40px;left:-40px;width:1px;height:1px;opacity:0;border:0;padding:0}
+.quick:active{transform:scale(.9);background:#1b2739}
+.quick svg{width:14px;height:14px}
+.quick.done{color:var(--green);border-color:#1c5a44;background:#0b1a14}
+.cursor{
+  display:inline-block;width:.55em;height:1.05em;background:#fff;vertical-align:-.16em;
+  margin-left:1px;animation:blink 1.05s steps(1) infinite;
+}
+@keyframes blink{50%{opacity:0}}
+
+/* ── hint ───────────────────────────────────────────────────────── */
+.hint{
+  height:29px;display:flex;align-items:center;padding:0 16px;background:var(--bar);
+  border-top:1px solid var(--border);color:var(--dim);font-size:11px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+}
+
+/* ── D · keypad ─────────────────────────────────────────────────── */
+.keypad{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;
+  background:var(--bar);padding-bottom:calc(4px + env(safe-area-inset-bottom));
+}
+.key{
+  height:64px;border:none;border-radius:8px;background:var(--key);color:#fff;
+  font-family:inherit;font-size:18px;font-weight:700;cursor:pointer;
+  transition:transform .06s,filter .06s;
+}
+.key:active{transform:scale(.96);filter:brightness(1.3)}
+.key.orange{background:var(--key-orange)}
+.key.red{background:var(--key-red)}
+.key.green{background:var(--key-green)}
+
+/* ── toast ──────────────────────────────────────────────────────── */
+#toast{
+  position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));
+  transform:translate(-50%,12px);background:#1d1d1d;border:1px solid #2e2e2e;
+  color:#e8ecf3;font-size:12px;padding:9px 14px;border-radius:999px;opacity:0;
+  pointer-events:none;transition:.18s;z-index:60;max-width:92%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ── sheets ─────────────────────────────────────────────────────── */
+.scrim{
+  position:absolute;inset:0;background:rgba(0,0,0,.66);display:flex;align-items:flex-end;
+  opacity:0;pointer-events:none;transition:.18s;z-index:50;
+}
+.scrim.open{opacity:1;pointer-events:auto}
+.sheet{
+  width:100%;background:#0d0d0d;border-top-left-radius:18px;border-top-right-radius:18px;
+  border-top:1px solid #242424;padding:14px 16px calc(16px + env(safe-area-inset-bottom));
+  transform:translateY(16px);transition:.2s;max-height:88%;overflow-y:auto;
+}
+.scrim.open .sheet{transform:translateY(0)}
+.grab{width:36px;height:3px;border-radius:2px;background:#2a2a2a;margin:0 auto 12px}
+.sheet h3{margin:0 0 3px;font-size:15px;font-weight:700;color:#dfe4ec}
+.sheet .sub{margin:0 0 12px;font-size:11.5px;color:var(--dim);line-height:1.4}
+
+.fmt-row{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;font-family:inherit;
+  background:#151515;border:1px solid #222;border-radius:12px;padding:10px 12px;
+  margin-bottom:7px;cursor:pointer;color:inherit;
+}
+.fmt-row.on{border-color:#1e3a63;background:#0e1622}
+.radio{width:15px;height:15px;border-radius:50%;border:1.5px solid #3a3a3a;flex:0 0 auto}
+.radio.on{border-color:var(--blue);background:radial-gradient(circle,var(--blue) 45%,transparent 47%)}
+.fmt-mid{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fmt-name{font-size:12.5px;color:#dfe4ec;font-weight:700}
+.fmt-desc{font-size:10.5px;color:var(--dim);line-height:1.35}
+
+pre#preview{
+  margin:10px 0 6px;background:#0a0a0a;border:1px solid #1e1e1e;border-radius:12px;
+  padding:11px 12px;font-family:var(--mono);font-size:11px;line-height:1.55;color:#a9b4c6;
+  white-space:pre-wrap;word-break:break-word;max-height:232px;overflow:auto;
+}
+.note{font-size:10.5px;color:var(--dim);margin:0 0 12px}
+
+textarea#urlInput{
+  width:100%;min-height:70px;resize:none;background:#0a0a0a;border:1px solid #242424;
+  border-radius:12px;color:var(--text);padding:11px 12px;font-size:13px;
+  font-family:var(--mono);outline:none;margin-bottom:10px;
+}
+textarea#urlInput:focus{border-color:#2b4a78}
+
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  flex:1 1 auto;min-width:92px;border-radius:12px;padding:12px 10px;font-size:12.5px;
+  font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--pill);
+  color:var(--muted);font-family:inherit;
+}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:#132a4d;border-color:#254f88;color:#bcd7ff}
+.btn.good{background:#0d2a20;border-color:#1c5a44;color:#7ee8bd}
+.btn.danger{background:#2a1010;border-color:#5a2020;color:#ffb3a7}
+.btn.ghost{background:transparent}
+
+.menu-item{
+  display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;
+  border-bottom:1px solid #191919;color:#c9d1de;font-size:13px;padding:13px 4px;
+  cursor:pointer;font-family:inherit;text-align:left;
+}
+.menu-item:last-child{border-bottom:none}
+.menu-item:active{background:#181818}
+.menu-item .ico{width:18px;text-align:center;color:var(--muted)}
+.menu-item.red{color:#ff9b8f}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- A · action bar -->
+  <div class="bar-a">
+    <button class="back" aria-label="Back">‹</button>
+    <button class="pill" id="btnUndo">UNDO</button>
+    <button class="pill" id="btnRedo">REDO</button>
+    <span class="spacer"></span>
+    <button class="pill" id="btnCopy">COPY</button>
+    <button class="pill blue" id="btnSave">↓ SAVE</button>
+    <button class="pill purple icon" id="btnShare" aria-label="Share">↗</button>
+    <button class="pill icon" id="btnMenu" aria-label="Menu">⋮</button>
+  </div>
+
+  <!-- B · status bar -->
+  <div class="bar-b">
+    <span class="stat" id="stTime">--:-- --</span>
+    <span class="stat" id="stLinks">0</span>
+    <span class="stat" id="stWarn">0</span>
+    <span class="stat" id="stCount"># 1</span>
+  </div>
+
+  <!-- C · log -->
+  <div class="log" id="log"></div>
+
+  <div class="hint">Each clip = (MM:SS - MM:SS) · + sequential · , extra group</div>
+
+  <!-- D · keypad — digits 1-9 ascending, 0 centred under the 2/5/8 column -->
+  <div class="keypad">
+    <button class="key" data-key="1">1</button>
+    <button class="key" data-key="2">2</button>
+    <button class="key" data-key="3">3</button>
+    <button class="key red" data-key="DEL">DEL</button>
+
+    <button class="key" data-key="4">4</button>
+    <button class="key" data-key="5">5</button>
+    <button class="key" data-key="6">6</button>
+    <button class="key orange" data-key="C">C</button>
+
+    <button class="key" data-key="7">7</button>
+    <button class="key" data-key="8">8</button>
+    <button class="key" data-key="9">9</button>
+    <button class="key orange" data-key="+">+</button>
+
+    <button class="key" data-key=":">:</button>
+    <button class="key" data-key="0">0</button>
+    <button class="key orange" data-key="OK">OK</button>
+    <button class="key green" data-key="ENT">ENT</button>
+
+    <button class="key orange" data-key="(">(</button>
+    <button class="key" data-key=",">,</button>
+    <button class="key orange" data-key=")">)</button>
+    <button class="key orange" data-key="-">-</button>
+  </div>
+
+  <input id="pasteSink" class="paste-sink" aria-hidden="true" tabindex="-1" autocomplete="off">
+
+  <div id="toast"></div>
+
+  <!-- save sheet -->
+  <div class="scrim" id="sheetSave">
+    <div class="sheet">
+      <div class="grab"></div>
+      <h3>Save as .txt</h3>
+      <p class="sub">Pick an export format — the preview is exactly what gets written.</p>
+      <div id="fmtRows"></div>
+      <pre id="preview"></pre>
+      <p class="note" id="note"></p>
+      <div class="btnrow">
+        <button class="btn primary" id="saveDownload">Save .txt</button>
+        <button class="btn good" id="saveCopy">Copy only</button>
+        <button class="btn" id="saveShare">Share</button>
+      </div>
+      <div class="btnrow" style="margin-top:8px">
+        <button class="btn ghost" data-close>Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- link sheet -->
+  <div class="scrim" id="sheetLink">
+    <div class="sheet">
+      <div class="grab"></div>
+      <h3 id="lnTitle">Link for entry #1</h3>
+      <p class="sub">Paste the video URL — youtu.be, /shorts, /live and tracking params are cleaned automatically.</p>
+      <textarea id="urlInput" placeholder="Paste URL here" spellcheck="false" autocomplete="off"></textarea>
+      <div class="btnrow" style="margin-bottom:8px">
+        <button class="btn good" id="lnPaste">📋 Paste from clipboard</button>
+      </div>
+      <div class="btnrow">
+        <button class="btn primary" id="lnSave">Save</button>
+        <button class="btn danger" id="lnClear">Clear</button>
+        <button class="btn ghost" data-close>Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- menu sheet -->
+  <div class="scrim" id="sheetMenu">
+    <div class="sheet">
+      <div class="grab"></div>
+      <h3>Time Note</h3>
+      <p class="sub">Everything stays on this device — nothing is uploaded.</p>
+      <button class="menu-item" id="menuFormat"><span class="ico">▤</span> Export format &amp; save</button>
+      <button class="menu-item" id="menuCopy"><span class="ico">⧉</span> Copy all</button>
+      <button class="menu-item" id="menuShare"><span class="ico">↗</span> Share</button>
+      <button class="menu-item red" id="menuClear"><span class="ico">✕</span> Clear everything</button>
+      <div class="btnrow" style="margin-top:12px">
+        <button class="btn ghost" data-close>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- confirm sheet -->
+  <div class="scrim" id="sheetConfirm">
+    <div class="sheet">
+      <div class="grab"></div>
+      <h3 id="cfTitle">Are you sure?</h3>
+      <p class="sub" id="cfSub"></p>
+      <div class="btnrow">
+        <button class="btn danger" id="cfOk">Yes</button>
+        <button class="btn ghost" data-close>Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>/* ------------------------------------------------------------------
+   Time Note — JS port of NoteBox 2 v2.16 Card 3 engine
+   (MainActivity: handleTnKey / rederiveStateSafe / sweepTnContent /
+    buildTnExport / repairTnContent / countLines / sanitizeUrl)
+   ------------------------------------------------------------------ */
+(function (root) {
+  'use strict';
+
+  var BASE = '1)\n(';
+
+  function countLines(c) {
+    if (!c) return 1;
+    var n = /^\d/.test(c) ? 1 : 0;
+    for (var i = 0; i < c.length - 1; i++) if (c[i] === '\n' && /\d/.test(c[i + 1])) n++;
+    return Math.max(1, n);
+  }
+
+  function stripDangling(s) {
+    if (s == null) return s;
+    var prev;
+    do { prev = s; s = s.replace(/\n\s*\d+\)\s*$/, ''); } while (s !== prev);
+    return s;
+  }
+
+  function needsClose(s) {
+    return /^[\s\S]*\(\d{1,2}:\d{2} - \d{1,2}:\d{2}$/.test(s);
+  }
+
+  function sanitizeUrl(raw) {
+    if (raw == null) return '';
+    raw = String(raw).trim();
+    var m = raw.match(/https?:\/\/[^\s"'<>]+/);
+    if (m) raw = m[0];
+    var pats = [
+      /https?:\/\/(?:www\.)?youtu\.be\/([A-Za-z0-9_\-]{6,})/,
+      /https?:\/\/m\.youtube\.com\/watch\?v=([A-Za-z0-9_\-]{6,})/,
+      /https?:\/\/(?:www\.)?youtube\.com\/shorts\/([A-Za-z0-9_\-]{6,})/,
+      /https?:\/\/(?:www\.)?youtube\.com\/live\/([A-Za-z0-9_\-]{6,})/
+    ];
+    for (var i = 0; i < pats.length; i++) {
+      var mm = raw.match(pats[i]);
+      if (mm) return 'https://www.youtube.com/watch?v=' + mm[1];
+    }
+    var mv = raw.match(/[?&]v=([A-Za-z0-9_\-]{6,})/);
+    if (mv && raw.indexOf('youtube.com') >= 0) return 'https://www.youtube.com/watch?v=' + mv[1];
+    raw = raw.replace(/[?&](utm_source|utm_medium|utm_campaign|utm_content|utm_term|si|ref|feature|igsh|fbclid|gclid)=[^&]*/g, '');
+    raw = raw.replace(/[?&]+$/, '').replace(/\?&/, '?').replace(/&&+/g, '&');
+    return raw;
+  }
+
+  function repair(s) {
+    if (!s || !s.trim()) return BASE;
+    var lines = s.split('\n'), out = [], prevHeader = false, expected = 1;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (line === '') continue;
+      if (/^\d+\)$/.test(line)) {
+        var n = parseInt(line, 10);
+        if (n < expected) continue;
+        if (n > expected) line = expected + ')';
+        out.push(line); expected++; prevHeader = true;
+      } else if (prevHeader) {
+        if (line.charAt(0) === '(') { out.push(line); prevHeader = false; }
+      } else {
+        if (line === '(') continue;
+        if (line.charAt(0) === '(' && out.length && out[out.length - 1].charAt(0) === '(') {
+          out[out.length - 1] = out[out.length - 1] + ',' + line;
+          continue;
+        }
+        out.push(line);
+      }
+    }
+    var r = stripDangling(out.join('\n'));
+    if (!r) return BASE;
+    if (r.indexOf('1)') !== 0 && r.charAt(0) === '(') r = '1)\n' + r;
+    return r;
+  }
+
+  function pretty(clips) {
+    return clips.replace(/\)\+\(/g, ') + (').replace(/\),\(/g, '), (');
+  }
+
+  function Machine(content, links, line) {
+    this.content = content || BASE;
+    this.links = (links || []).slice();
+    this.line = (line == null) ? countLines(this.content) : line;
+    this.state = 0; this.mm = ''; this.ss = '';
+    this.undo = []; this.redo = [];
+    this.msg = '';
+    this.rederive();
+  }
+
+  Machine.prototype.rederive = function () {
+    var c = this.content;
+    this.line = countLines(c);
+    this.state = 0; this.mm = ''; this.ss = '';
+    if (!c) return;
+    var lastNl = c.lastIndexOf('\n');
+    var last = lastNl >= 0 ? c.slice(lastNl + 1) : c;
+    var lo = last.lastIndexOf('(');
+    if (lo < 0) return;
+    var clip = last.slice(lo + 1);
+    if (clip === '') return;
+    if (clip.indexOf('),(') >= 0 || clip.indexOf(')+(') >= 0) return;
+    var d = clip.indexOf(' - ');
+    if (d < 0) {
+      var ci = clip.indexOf(':');
+      if (ci < 0) { this.mm = clip; this.state = clip.length === 1 ? 1 : 0; }
+      else {
+        this.mm = clip.slice(0, ci);
+        var ss = clip.slice(ci + 1);
+        if (ss === '') this.state = 2;
+        else if (ss.length === 1) { this.ss = ss; this.state = 3; }
+        else { this.ss = ss; this.state = 4; }
+      }
+    } else {
+      var start = clip.slice(0, d), end = clip.slice(d + 3);
+      var sc = start.indexOf(':');
+      if (sc >= 0) { this.mm = start.slice(0, sc); this.ss = start.slice(sc + 1); }
+      if (end === '') { this.state = 4; }
+      else {
+        var ec = end.indexOf(':');
+        if (ec < 0) { this.mm = end; this.state = end.length === 1 ? 5 : 6; }
+        else {
+          this.mm = end.slice(0, ec);
+          var ess = end.slice(ec + 1);
+          if (ess === '') this.state = 6;
+          else if (ess.length === 1) { this.ss = ess; this.state = 7; }
+          else { this.ss = ess; this.state = 0; }
+        }
+      }
+    }
+  };
+
+  Machine.prototype.pushUndo = function () {
+    this.undo.push(this.content);
+    if (this.undo.length > 50) this.undo.shift();
+    this.redo.length = 0;
+  };
+
+  Machine.prototype.smartDelGuard = function () {
+    if (/\),\($/.test(this.content) || /\)\+\($/.test(this.content)) {
+      this.content = this.content.slice(0, -3);
+      this.rederive();
+      this.line = countLines(this.content);
+      return true;
+    }
+    return false;
+  };
+
+  Machine.prototype.key = function (k) {
+    this.msg = '';
+    this.rederive();
+    var c = this.content;
+
+    if (k === '(' || k === ')' || k === ':') return c;
+
+    if (/^[0-9]$/.test(k)) {
+      this.pushUndo();
+      var d = parseInt(k, 10);
+      switch (this.state) {
+        case 0:
+          if (needsClose(c)) c += ')';
+          if (!(/\($/.test(c) || /,\($/.test(c) || /\+\($/.test(c))) {
+            c += /\)$/.test(c) ? ',(' : '),(';
+          }
+          if (d >= 6) { this.mm = '0' + k; this.state = 2; c += '0' + k + ':'; }
+          else { this.mm = k; this.state = 1; c += k; }
+          break;
+        case 1: this.mm += k; this.state = 2; c += k + ':'; break;
+        case 2:
+          if (d >= 6) { this.ss = '0' + k; this.state = 4; c += '0' + k + ' - '; }
+          else { this.ss = k; this.state = 3; c += k; }
+          break;
+        case 3: this.ss += k; this.state = 4; c += k + ' - '; break;
+        case 4:
+          if (!/ - $/.test(c)) c += ' - ';
+          if (d >= 6) { this.mm = '0' + k; this.state = 6; c += '0' + k + ':'; }
+          else { this.mm = k; this.state = 5; c += k; }
+          break;
+        case 5: this.mm += k; this.state = 6; c += k + ':'; break;
+        case 6:
+          if (d >= 6) { this.ss = '0' + k; this.state = 0; c += '0' + k + '),('; }
+          else { this.ss = k; this.state = 7; c += k; }
+          break;
+        case 7: this.ss += k; this.state = 0; c += k + '),('; break;
+      }
+      this.content = c;
+      return c;
+    }
+
+    if (k === 'OK') {
+      switch (this.state) {
+        case 1: this.pushUndo(); c = c.slice(0, -1) + '0' + this.mm + ':'; this.mm = '0' + this.mm; this.state = 2; break;
+        case 2: this.pushUndo(); c += '00 - '; this.ss = '00'; this.state = 4; break;
+        case 3: this.pushUndo(); c = c.slice(0, -1) + '0' + this.ss + ' - '; this.ss = '0' + this.ss; this.state = 4; break;
+        case 5: this.pushUndo(); c = c.slice(0, -1) + '0' + this.mm + ':'; this.mm = '0' + this.mm; this.state = 6; break;
+        case 6: this.pushUndo(); c += '00),('; this.ss = '00'; this.state = 0; break;
+        case 7: this.pushUndo(); c = c.slice(0, -1) + '0' + this.ss + '),('; this.ss = '0' + this.ss; this.state = 0; break;
+      }
+      this.content = c;
+      return c;
+    }
+
+    if (k === '+') {
+      if (this.state === 0) {
+        if (/\),\($/.test(c)) { this.pushUndo(); this.content = c.slice(0, -3) + ')+('; }
+        else if (/\)$/.test(c) && !/\)\+\($/.test(c)) { this.pushUndo(); this.content = c + '+('; }
+      }
+      return this.content;
+    }
+
+    if (k === ',') {
+      if (this.state === 0) {
+        if (/\)\+\($/.test(c)) { this.pushUndo(); this.content = c.slice(0, -3) + '),('; }
+        else if (/\)$/.test(c) && !/\),\($/.test(c)) { this.pushUndo(); this.content = c + ',('; }
+      }
+      return this.content;
+    }
+
+    if (k === '-') return c;
+
+    if (k === 'ENT') {
+      if (/\n\($/.test(c) || c === BASE) return c;
+      if (this.state >= 1 && this.state <= 5) { this.msg = 'Finish the clip first'; return c; }
+      this.pushUndo();
+      if (this.state === 6) { c += '00)'; this.state = 0; }
+      else if (this.state === 7) { c = c.slice(0, -1) + '0' + this.ss + ')'; this.state = 0; }
+      if (needsClose(c)) c += ')';
+      if (/\),\($/.test(c) || /\)\+\($/.test(c)) c = c.slice(0, -3) + ')';
+      c = stripDangling(c);
+      this.line = Math.max(this.line, countLines(c)) + 1;
+      c += '\n' + this.line + ')\n(';
+      while (this.links.length < this.line) this.links.push('');
+      this.content = c;
+      this.state = 0; this.mm = ''; this.ss = '';
+      return c;
+    }
+
+    if (k === 'DEL') {
+      if (c === BASE) return c;
+      this.pushUndo();
+      if (/\n\($/.test(c)) {
+        var nlParen = c.length - 2;
+        var lineStart = c.lastIndexOf('\n', nlParen - 1);
+        if (lineStart >= 0) {
+          var hdr = c.slice(lineStart + 1, nlParen);
+          if (/^\d+\)$/.test(hdr)) {
+            this.content = c.slice(0, lineStart);
+            this.rederive();
+            this.line = countLines(this.content);
+            return this.content;
+          }
+        }
+      }
+      var stripped = stripDangling(c);
+      if (stripped !== c) {
+        this.content = stripped; this.rederive();
+        this.line = countLines(this.content);
+        return this.content;
+      }
+      if (this.smartDelGuard()) return this.content;
+      if (/\),\($/.test(c) || /\)\+\($/.test(c)) { this.content = c.slice(0, -4); this.rederive(); }
+      else if (/ - $/.test(c)) { this.content = c.slice(0, -4); this.rederive(); }
+      else if (/:$/.test(c) && (this.state === 2 || this.state === 6)) { this.content = c.slice(0, -2); this.rederive(); }
+      else if (c.length) { this.content = c.slice(0, -1); this.rederive(); }
+      if (this.content.length < 4 || this.content.indexOf('1)\n(') < 0) {
+        this.content = BASE; this.state = 0; this.mm = ''; this.ss = ''; this.line = 1;
+      }
+      this.line = countLines(this.content);
+      return this.content;
+    }
+
+    if (k === 'C') {
+      if (this.state === 0) {
+        if (/\)\+\($/.test(c) || /\),\($/.test(c)) { this.pushUndo(); this.content = c.slice(0, -2); this.state = 0; }
+        else this.msg = 'Nothing to clear';
+      } else {
+        this.pushUndo();
+        var lo2 = c.lastIndexOf('(');
+        this.content = lo2 >= 0 ? c.slice(0, lo2 + 1) : BASE;
+        this.state = 0; this.mm = ''; this.ss = '';
+      }
+      return this.content;
+    }
+
+    return c;
+  };
+
+  Machine.prototype.sweep = function () {
+    var s = this.content;
+    if (/\),\($/.test(s) || /\)\+\($/.test(s)) s = s.slice(0, -3) + ')';
+    if (/\n\($/.test(s)) s = s.slice(0, s.lastIndexOf('\n(')).trim();
+    if (/ - $/.test(s)) s = s.slice(0, -3);
+    if (needsClose(s)) s = s + ')';
+    return s;
+  };
+
+  /* entries of the live content, pretty-printed (display model) */
+  Machine.prototype.entries = function () {
+    var parts = this.content.split(/\n(?=\d+\)\n)/);
+    return parts.map(function (p) {
+      var nl = p.indexOf('\n');
+      var head = nl >= 0 ? p.slice(0, nl) : p;
+      var clips = nl >= 0 ? p.slice(nl + 1) : '';
+      return { head: head.trim(), clips: pretty(clips) };
+    });
+  };
+
+  Machine.prototype.buildExport = function (fmt) {
+    var clean = stripDangling(this.sweep());
+    var entries = clean.split(/\n(?=\d+\)\n)/);
+    var out = [], video = 0;
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i].trim();
+      var nl = e.indexOf('\n');
+      var clips = (nl >= 0 ? e.slice(nl + 1) : e).trim();
+      clips = clips.replace(/\+\($/, '').replace(/,$/, '').replace(/,\($/, '').trim();
+      if (/^\d+\)?$/.test(clips)) continue;
+      video++;
+      var url = (i < this.links.length && this.links[i]) ? this.links[i] : '(no link)';
+      var p = pretty(clips);
+      if (fmt === 'plain') out.push('Video ' + video + ' - ' + url + '\n' + p + '\n');
+      else if (fmt === 'numbered') {
+        var pieces = p.replace(/\)\s*[+,]\s*\(/g, ')|(').split('|');
+        var body = pieces.map(function (piece, j) {
+          return '   ' + video + '.' + (j + 1) + ') ' + piece.trim();
+        }).join('\n');
+        out.push(video + ') Video ' + video + ' — ' + url + '\n' + body + '\n');
+      } else out.push('/* Video ' + video + ' */\nURL: ' + url + '\nClips: ' + p + '\n');
+    }
+    return out.join('\n');
+  };
+
+  Machine.prototype.linkCount = function () {
+    return this.links.filter(function (x) { return !!x; }).length;
+  };
+  Machine.prototype.dupeCount = function () {
+    var seen = {}, n = 0;
+    this.links.forEach(function (x) { if (!x) return; if (seen[x]) n++; seen[x] = 1; });
+    return n;
+  };
+
+  root.TN = {
+    BASE: BASE, countLines: countLines, repair: repair, sanitizeUrl: sanitizeUrl,
+    stripDangling: stripDangling, needsClose: needsClose, pretty: pretty,
+    Machine: Machine,
+    stampName: function (m, d) {
+      d = d || new Date();
+      var h = d.getHours(), ap = h >= 12 ? 'pm' : 'am';
+      h = h % 12 || 12;
+      var p2 = function (n) { return String(n).padStart(2, '0'); };
+      return 'TimeNote_' + h + '-' + p2(d.getMinutes()) + ap + '_(' + m.linkCount() + 'L' + m.dupeCount() + 'D)_' +
+        p2(d.getDate()) + '-' + p2(d.getMonth() + 1) + '-' + String(d.getFullYear()).slice(-2) + '.txt';
+    }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>/* ── AppsWeb · Time Note — UI layer ─────────────────────────────── */
+(function () {
+  'use strict';
+  var TN = window.TN;
+  var LS = 'appsweb.timenote.v2';
+
+  var ICON = {
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 14.5a4 4 0 0 1 0-5.6l2-2a4 4 0 0 1 5.6 5.6l-1 1"/><path d="M14.5 9.5a4 4 0 0 1 0 5.6l-2 2a4 4 0 0 1-5.6-5.6l1-1"/></svg>',
+    warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17.5v.5"/></svg>',
+    clip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 4V3h6v1"/><path d="M8.5 10h7M8.5 14h5"/></svg>',
+    paste: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="5" width="12" height="16" rx="2"/><path d="M9.5 5V3.5h5V5"/><path d="M12 10v6M9.5 13.5 12 16l2.5-2.5"/></svg>'
+  };
+
+  var m = null, fmt = 'clip', undoStack = [], redoStack = [];
+  var $ = function (id) { return document.getElementById(id); };
+  var el = function (t, c, txt) {
+    var n = document.createElement(t);
+    if (c) n.className = c;
+    if (txt != null) n.textContent = txt;
+    return n;
+  };
+
+  /* ── state ─────────────────────────────────────────────────── */
+  function load() {
+    var content = TN.BASE, links = [];
+    try {
+      var raw = localStorage.getItem(LS);
+      if (raw) {
+        var o = JSON.parse(raw);
+        if (o && typeof o.content === 'string') { content = TN.repair(o.content); links = o.links || []; }
+        if (o && o.fmt) fmt = o.fmt;
+      }
+    } catch (e) {}
+    m = new TN.Machine(content, links);
+  }
+  function save() {
+    try { localStorage.setItem(LS, JSON.stringify({ content: m.content, links: m.links, fmt: fmt })); } catch (e) {}
+  }
+  function snap() {
+    undoStack.push({ c: m.content, l: m.links.slice() });
+    if (undoStack.length > 50) undoStack.shift();
+    redoStack.length = 0;
+  }
+
+  /* ── toast ─────────────────────────────────────────────────── */
+  var tTimer = null;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(tTimer);
+    tTimer = setTimeout(function () { t.classList.remove('show'); }, 1700);
+  }
+  function buzz() { if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} } }
+
+  /* ── render ────────────────────────────────────────────────── */
+  function render(scroll) {
+    var log = $('log');
+    var entries = m.entries();
+    log.innerHTML = '';
+
+    entries.forEach(function (e, i) {
+      var box = el('div', 'entry');
+      box.appendChild(el('div', 'hdr', e.head));
+
+      var clips = el('div', 'clips');
+      clips.appendChild(document.createTextNode(e.clips));
+      if (i === entries.length - 1) clips.appendChild(el('span', 'cursor'));
+      box.appendChild(clips);
+
+      var row = el('div', 'linkrow');
+      var link = m.links[i] || '';
+      var btn = el('button', 'link' + (link ? ' set' : ''));
+      btn.innerHTML = ICON.clip;
+      btn.appendChild(el('span', '', link || 'Paste link'));
+      btn.onclick = function () { openLinkSheet(i); };
+      row.appendChild(btn);
+
+      var quick = el('button', 'quick');
+      quick.innerHTML = ICON.paste;
+      quick.title = 'Quick paste from clipboard';
+      quick.setAttribute('aria-label', 'Quick paste link for entry ' + (i + 1));
+      quick.onclick = function () { quickPaste(i, quick); };
+      row.appendChild(quick);
+
+      box.appendChild(row);
+      log.appendChild(box);
+    });
+
+    var links = m.linkCount(), dupes = m.dupeCount();
+    $('stLinks').innerHTML = ICON.link + '<span>' + links + '</span>';
+    var w = $('stWarn');
+    w.innerHTML = ICON.warn + '<span>' + dupes + '</span>';
+    w.classList.toggle('warn', dupes > 0);
+    $('stCount').textContent = '# ' + m.line;
+    $('btnUndo').classList.toggle('off', !undoStack.length);
+    $('btnRedo').classList.toggle('off', !redoStack.length);
+    var has = m.content.replace(/[\s\d)]+$/, '').length > 0;
+    ['btnCopy', 'btnSave', 'btnShare'].forEach(function (id) { $(id).classList.toggle('off', !has); });
+    if (scroll !== false) log.scrollTop = log.scrollHeight;
+  }
+
+  function clock() {
+    var d = new Date(), h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    $('stTime').innerHTML = ICON.clock + '<span>' + h + ':' +
+      String(d.getMinutes()).padStart(2, '0') + ' ' + ap + '</span>';
+  }
+
+  /* ── keypad ────────────────────────────────────────────────── */
+  function press(k) {
+    buzz();
+    disarm();
+    var before = m.content;
+    if (k !== '(' && k !== ')' && k !== ':' && k !== '-') snap();
+    m.key(k);
+    if (m.content === before && undoStack.length) undoStack.pop();
+    if (m.msg) toast(m.msg);
+    render();
+    save();
+  }
+
+  /* ── quick paste — one tap, straight into the entry ─────────── */
+  var armed = -1;
+
+  function quickPaste(i, btn) {
+    var api = navigator.clipboard;
+    if (!api || !api.readText) { armPaste(i); return; }
+    api.readText().then(function (txt) {
+      var clean = TN.sanitizeUrl(txt || '');
+      if (!clean || !/[a-z0-9]\.[a-z]{2,}/i.test(clean)) { toast('No link in clipboard'); return; }
+      applyLink(i, clean, btn);
+    }).catch(function () { armPaste(i); });
+  }
+
+  /* clipboard read blocked (file:// or no permission): grab the next paste
+     event instead of opening a sheet — still a direct, single-gesture paste */
+  function armPaste(i) {
+    armed = i;
+    var sink = $('pasteSink');
+    sink.value = '';
+    try { sink.focus({ preventScroll: true }); } catch (e) { sink.focus(); }
+    document.querySelectorAll('.quick').forEach(function (b) { b.classList.remove('armed'); });
+    var btn = document.querySelectorAll('.quick')[i];
+    if (btn) btn.classList.add('armed');
+    toast('Long-press → Paste to drop the link');
+    setTimeout(function () {
+      if (armed === i) {
+        armed = -1;
+        if (btn) btn.classList.remove('armed');
+      }
+    }, 9000);
+  }
+
+  function disarm() {
+    armed = -1;
+    document.querySelectorAll('.quick').forEach(function (b) { b.classList.remove('armed'); });
+    var sink = $('pasteSink');
+    if (sink) { sink.value = ''; sink.blur(); }
+  }
+
+  function applyLink(i, clean, btn) {
+    snap();
+    while (m.links.length <= i) m.links.push('');
+    var dupe = m.links.some(function (x, j) { return x && x === clean && j !== i; });
+    m.links[i] = clean;
+    render(false);
+    save();
+    if (btn) {
+      btn.classList.add('done');
+      setTimeout(function () { btn.classList.remove('done'); }, 900);
+    }
+    toast(dupe ? '⚠ Duplicate link saved' : 'Link pasted ✓');
+  }
+
+  /* ── link sheet ────────────────────────────────────────────── */
+  var linkIdx = 0;
+  function openLinkSheet(i) {
+    linkIdx = i;
+    $('lnTitle').textContent = 'Link for entry #' + (i + 1);
+    $('urlInput').value = m.links[i] || '';
+    openSheet('sheetLink');
+    setTimeout(function () { $('urlInput').focus(); }, 120);
+  }
+
+  /* ── sheets ────────────────────────────────────────────────── */
+  function openSheet(id) {
+    document.querySelectorAll('.scrim').forEach(function (s) { s.classList.remove('open'); });
+    $(id).classList.add('open');
+  }
+  function closeSheets() {
+    document.querySelectorAll('.scrim').forEach(function (s) { s.classList.remove('open'); });
+  }
+  function confirmSheet(title, sub, label, fn) {
+    $('cfTitle').textContent = title;
+    $('cfSub').textContent = sub;
+    $('cfOk').textContent = label;
+    $('cfOk').onclick = function () { closeSheets(); fn(); };
+    openSheet('sheetConfirm');
+  }
+
+  /* ── export ────────────────────────────────────────────────── */
+  var FMT = {
+    clip: ['Clip format (default)', '/* Video 1 */ · URL: … · Clips: (…) + (…)'],
+    plain: ['Plain format', 'Video 1 - URL / 00:10 - 00:30, 01:00 - 02:00'],
+    numbered: ['Numbered format', '1) Video 1 — URL · 1.1) clip · 1.2) clip']
+  };
+  function exportText() { return m.buildExport(fmt); }
+
+  function renderFormats() {
+    var box = $('fmtRows');
+    box.innerHTML = '';
+    Object.keys(FMT).forEach(function (k) {
+      var row = el('button', 'fmt-row' + (fmt === k ? ' on' : ''));
+      row.appendChild(el('span', 'radio' + (fmt === k ? ' on' : '')));
+      var mid = el('span', 'fmt-mid');
+      mid.appendChild(el('span', 'fmt-name', FMT[k][0]));
+      mid.appendChild(el('span', 'fmt-desc', FMT[k][1]));
+      row.appendChild(mid);
+      row.onclick = function () { fmt = k; save(); renderFormats(); renderPreview(); };
+      box.appendChild(row);
+    });
+  }
+  function renderPreview() {
+    var txt = exportText();
+    $('preview').textContent = txt || '(nothing to export yet)';
+    $('note').textContent = m.linkCount() + ' link(s) · ' + m.dupeCount() + ' duplicate(s) · ' +
+      TN.stampName(m);
+  }
+  function openSave() {
+    if (!exportText().trim()) { toast('Nothing to save'); return; }
+    renderFormats(); renderPreview(); openSheet('sheetSave');
+  }
+
+  function download() {
+    var txt = exportText();
+    if (!txt.trim()) { toast('Nothing to save'); return; }
+    var blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = TN.stampName(m);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    closeSheets();
+    toast('Saved ' + TN.stampName(m));
+  }
+
+  function copyText() {
+    var txt = exportText();
+    if (!txt.trim()) { toast('Nothing to copy'); return; }
+    closeSheets();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function () { toast('Copied ✓'); },
+        function () { legacyCopy(txt); });
+    } else legacyCopy(txt);
+  }
+  function legacyCopy(txt) {
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('Copied ✓'); } catch (e) { toast('Copy blocked'); }
+    ta.remove();
+  }
+  function shareText() {
+    var txt = exportText();
+    if (!txt.trim()) { toast('Nothing to share'); return; }
+    closeSheets();
+    if (navigator.share) navigator.share({ title: 'Time Note', text: txt }).catch(function () {});
+    else { legacyCopy(txt); toast('Copied instead (no share sheet)'); }
+  }
+
+  /* ── wiring ────────────────────────────────────────────────── */
+  function wire() {
+    document.querySelectorAll('[data-key]').forEach(function (b) {
+      b.onclick = function () { press(b.getAttribute('data-key')); };
+    });
+
+    $('btnUndo').onclick = function () {
+      if (!undoStack.length) { toast('Nothing to undo'); return; }
+      redoStack.push({ c: m.content, l: m.links.slice() });
+      var s = undoStack.pop();
+      m = new TN.Machine(s.c, s.l); render(); save();
+    };
+    $('btnRedo').onclick = function () {
+      if (!redoStack.length) { toast('Nothing to redo'); return; }
+      undoStack.push({ c: m.content, l: m.links.slice() });
+      var s = redoStack.pop();
+      m = new TN.Machine(s.c, s.l); render(); save();
+    };
+    $('btnCopy').onclick = copyText;
+    $('btnSave').onclick = openSave;
+    $('btnShare').onclick = shareText;
+    $('btnMenu').onclick = function () { openSheet('sheetMenu'); };
+    $('menuFormat').onclick = openSave;
+    $('menuCopy').onclick = copyText;
+    $('menuShare').onclick = shareText;
+    $('menuClear').onclick = function () {
+      confirmSheet('Clear everything?', 'This cannot be undone — all clips and links go.', 'Clear All', function () {
+        snap();
+        m = new TN.Machine(TN.BASE, []);
+        render(); save(); toast('Cleared');
+      });
+    };
+
+    $('lnSave').onclick = function () {
+      var clean = TN.sanitizeUrl($('urlInput').value);
+      closeSheets();
+      if (!clean) { applyLink(linkIdx, ''); return; }
+      applyLink(linkIdx, clean);
+    };
+    $('lnClear').onclick = function () { closeSheets(); applyLink(linkIdx, ''); };
+    $('lnPaste').onclick = function () {
+      if (!(navigator.clipboard && navigator.clipboard.readText)) { toast('Long-press the box to paste'); return; }
+      navigator.clipboard.readText().then(function (t) {
+        if (t) { $('urlInput').value = t.trim(); toast('Pasted from clipboard'); }
+        else toast('Clipboard is empty');
+      }, function () { $('urlInput').focus(); toast('Long-press the box to paste'); });
+    };
+
+    $('saveDownload').onclick = download;
+    $('saveCopy').onclick = copyText;
+    $('saveShare').onclick = shareText;
+
+    document.querySelectorAll('[data-close]').forEach(function (b) { b.onclick = closeSheets; });
+    document.querySelectorAll('.scrim').forEach(function (s) {
+      s.addEventListener('click', function (e) { if (e.target === s) closeSheets(); });
+    });
+
+    document.addEventListener('paste', function (e) {
+      if (armed < 0) return;
+      var data = (e.clipboardData || window.clipboardData);
+      var txt = data ? data.getData('text') : '';
+      e.preventDefault();
+      var i = armed;
+      disarm();
+      var clean = TN.sanitizeUrl(txt || '');
+      if (!clean || !/[a-z0-9]\.[a-z]{2,}/i.test(clean)) { toast('No link in clipboard'); return; }
+      applyLink(i, clean);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (/^(TEXTAREA|INPUT)$/.test(e.target.tagName) && e.target.id !== 'pasteSink') return;
+      var k = e.key;
+      if (/^[0-9]$/.test(k)) press(k);
+      else if (k === 'Enter') press('ENT');
+      else if (k === 'Backspace') press('DEL');
+      else if (k === '+' || k === '-' || k === ',') press(k);
+      else if (k === 'Escape') closeSheets();
+      else return;
+      e.preventDefault();
+    });
+  }
+
+  function boot() {
+    load();
+    wire();
+    render();
+    clock();
+    setInterval(clock, 30000);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>
