@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0a">
 <meta name="description" content="Time Note — log video timestamps on a 20-key pad, attach a link per clip, export as .txt.">
 <title>Time Note · AppsWeb</title>
@@ -16,6 +16,19 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0}
+/* no double-tap zoom, no text inflation, no rubber-band */
+html,body{
+  touch-action:manipulation;
+  -webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%;
+  overscroll-behavior:none;
+}
+/* controls never select text or show the iOS magnifier */
+button,.key,.pill,.chip,.quick,.link,.back,.stat,.dots{
+  -webkit-user-select:none;-moz-user-select:none;user-select:none;
+  touch-action:manipulation;-webkit-touch-callout:none;
+}
+/* the paste box must stay selectable */
+textarea,input{-webkit-user-select:text;user-select:text;touch-action:auto}
 body{
   background:#050505;color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -1037,7 +1050,19 @@ textarea#urlInput:focus{border-color:#2b4a78}
     });
   }
 
+  /* ── zoom lock ─────────────────────────────────────────────
+     touch-action:manipulation + the viewport meta kill double-tap zoom;
+     iOS Safari ignores user-scalable=no for pinch, so block its
+     proprietary gesture events too. */
+  function lockZoom() {
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (t) {
+      document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
+    });
+    document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
+  }
+
   function boot() {
+    lockZoom();
     load();
     wire();
     render();
