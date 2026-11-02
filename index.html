@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="AppsWeb — small, focused, offline-first web tools. Time Note: log video timestamps and export them as .txt.">
+<title>AppsWeb</title>
+<style>
+:root{
+  --bg:#000000; --bar:#0a0a0a; --card:#101010; --pill:#1a1a1a; --border:#2a2a2a;
+  --text:#ffffff; --muted:#888888; --dim:#555555;
+  --blue:#3b82f6; --purple:#8b5cf6; --green:#10b981; --red:#ef4444;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{
+  background:#050505;color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  display:flex;align-items:center;justify-content:center;
+}
+.app{
+  position:relative;width:100%;max-width:430px;min-height:100dvh;max-height:920px;
+  background:var(--bg);display:flex;flex-direction:column;overflow:hidden;
+}
+@media (min-width:520px){
+  body{background:radial-gradient(120% 90% at 50% 0%,#141414,#050505 70%)}
+  .app{min-height:94dvh;border-radius:26px;border:1px solid #1e1e1e;box-shadow:0 30px 80px rgba(0,0,0,.8)}
+}
+.top{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:calc(16px + env(safe-area-inset-top)) 16px 10px;background:var(--bar);
+  border-bottom:1px solid #161616;
+}
+.brand{font-size:11px;letter-spacing:.18em;font-weight:700;color:var(--muted)}
+.gear{
+  width:34px;height:34px;border-radius:10px;background:var(--pill);border:1px solid var(--border);
+  color:var(--muted);font-size:15px;display:grid;place-items:center;cursor:pointer;text-decoration:none;
+}
+.hero{padding:18px 16px 8px}
+.hero h1{margin:0 0 6px;font-size:22px;letter-spacing:-.01em}
+.hero p{margin:0;font-size:12.5px;color:var(--dim);line-height:1.45}
+.list{flex:1 1 auto;padding:10px 16px 24px;display:flex;flex-direction:column;gap:10px}
+
+.card{
+  position:relative;display:block;text-decoration:none;color:inherit;
+  border-radius:16px;padding:16px 18px;border:1px solid #0d0d0d;
+  background:linear-gradient(135deg,#0f1a33,#08101f);
+  transition:transform .1s,border-color .15s;
+}
+.card:active{transform:scale(.99)}
+.card.live{border-color:#243a5c}
+.card.soon{opacity:.62}
+.card .label{font-size:9.5px;letter-spacing:.16em;color:#7a8aa8;font-weight:700;margin-bottom:7px}
+.card .name{font-size:16.5px;font-weight:600;color:#e9edf4;margin-bottom:4px}
+.card .desc{font-size:11.5px;color:#9aa3b3;line-height:1.4}
+.card .chev{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:20px;color:#7a8aa8}
+.card .badge{
+  position:absolute;right:44px;top:16px;font-size:9px;font-weight:700;letter-spacing:.1em;
+  padding:3px 7px;border-radius:999px;border:1px solid #2a1400;color:#ffb066;background:#1a0d00;
+}
+.card .badge.soon{color:#6b7688;border-color:#242424;background:#121212}
+.c-notes{background:linear-gradient(135deg,#1a0f33,#0e0820)}
+.c-time{background:linear-gradient(135deg,#2a1400,#160a00)}
+.foot{padding:0 16px calc(18px + env(safe-area-inset-bottom));font-size:10.5px;color:#3f3f3f;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <span class="brand">APPSWEB</span>
+    <a class="gear" href="https://github.com/StoreCode-hub/AppsWeb" aria-label="Source on GitHub">⌘</a>
+  </div>
+
+  <div class="hero">
+    <h1>Your Tools</h1>
+    <p>Small, focused tools that run in the browser. Fully offline — nothing leaves your device.</p>
+  </div>
+
+  <div class="list">
+    <div class="card c-collect soon">
+      <div class="label">CLIPBOARD</div>
+      <div class="name">Smart Collector</div>
+      <div class="desc">Type, collect, format</div>
+      <span class="badge soon">SOON</span>
+    </div>
+
+    <div class="card c-notes soon">
+      <div class="label">NOTES</div>
+      <div class="name">Quick Write</div>
+      <div class="desc">Free-form notepad</div>
+      <span class="badge soon">SOON</span>
+    </div>
+
+    <a class="card c-time live" href="time-note.html">
+      <div class="label">TIMESTAMPS</div>
+      <div class="name">Time Note</div>
+      <div class="desc">Log video clips · paste the link · export .txt</div>
+      <span class="badge">LIVE</span>
+      <span class="chev">›</span>
+    </a>
+  </div>
+
+  <div class="foot">Time Note works offline and saves on your device. No account, no tracking, no ads.</div>
+</div>
+</body>
+</html>
