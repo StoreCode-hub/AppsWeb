@@ -134,6 +134,7 @@ body{
 .key.orange{background:var(--key-orange)}
 .key.red{background:var(--key-red)}
 .key.green{background:var(--key-green)}
+.key.violet{background:var(--purple);font-size:17px;letter-spacing:.02em}
 
 /* ── toast ──────────────────────────────────────────────────────── */
 #toast{
@@ -236,7 +237,7 @@ textarea#urlInput:focus{border-color:#2b4a78}
   <!-- C · log -->
   <div class="log" id="log"></div>
 
-  <div class="hint">Each clip = (MM:SS - MM:SS) · + sequential · , extra group</div>
+  <div class="hint">Each clip = (MM:SS - MM:SS) · +4…+7 = end time</div>
 
   <!-- D · keypad — digits 1-9 ascending, 0 centred under the 2/5/8 column -->
   <div class="keypad">
@@ -260,10 +261,10 @@ textarea#urlInput:focus{border-color:#2b4a78}
     <button class="key orange" data-key="OK">OK</button>
     <button class="key green" data-key="ENT">ENT</button>
 
-    <button class="key orange" data-key="(">(</button>
-    <button class="key" data-key=",">,</button>
-    <button class="key orange" data-key=")">)</button>
-    <button class="key orange" data-key="-">-</button>
+    <button class="key violet" data-key="+4">+4</button>
+    <button class="key violet" data-key="+5">+5</button>
+    <button class="key violet" data-key="+6">+6</button>
+    <button class="key violet" data-key="+7">+7</button>
   </div>
 
   <input id="pasteSink" class="paste-sink" aria-hidden="true" tabindex="-1" autocomplete="off">
@@ -415,6 +416,41 @@ textarea#urlInput:focus{border-color:#2b4a78}
     if (r.indexOf('1)') !== 0 && r.charAt(0) === '(') r = '1)\n' + r;
     return r;
   }
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  /* ── nudge: only valid right after the dash ──────────────────────
+     "(08:08 - " + +4  ->  "(08:08 - 08:12),("
+     end time = start + n seconds, capped at the 59:59 timeline.  */
+  Machine.prototype.nudge = function (n) {
+    this.rederive();
+    if (this.state === 0) return { ok: false, msg: 'Type a start time first' };
+    if (this.state >= 1 && this.state <= 3) return { ok: false, msg: 'Finish the start time (MM:SS)' };
+    if (this.state >= 5 && this.state <= 7) return { ok: false, msg: 'End time already started — clear it first' };
+
+    var lo = this.content.lastIndexOf('(');
+    if (lo < 0) return { ok: false, msg: 'Type a start time first' };
+    var clip = this.content.slice(lo + 1);
+    var m = clip.match(/^(\d{1,2}):(\d{2}) - $/);
+    if (!m) return { ok: false, msg: 'Type a start time first' };
+
+    var mm = parseInt(m[1], 10), ss = parseInt(m[2], 10);
+    if (mm > 59 || ss > 59) return { ok: false, msg: 'Start time is out of range' };
+
+    var MAX = 59 * 60 + 59;
+    var start = mm * 60 + ss;
+    if (start >= MAX) return { ok: false, msg: 'Timeline ends at 59:59' };
+
+    var want = start + n;
+    var end = Math.min(want, MAX);
+    var stamped = pad2(Math.floor(end / 60)) + ':' + pad2(end % 60);
+
+    this.pushUndo();
+    this.content = this.content + stamped + ')';   // bracket closed; the next digit chains ',(' by itself
+    this.state = 0; this.mm = ''; this.ss = '';
+    this.line = countLines(this.content);
+    return { ok: true, start: m[1] + ':' + m[2], end: stamped, clamped: want > MAX };
+  };
 
   function pretty(clips) {
     return clips.replace(/\)\+\(/g, ') + (').replace(/\),\(/g, '), (');
@@ -810,6 +846,7 @@ textarea#urlInput:focus{border-color:#2b4a78}
   function press(k) {
     buzz();
     disarm();
+    if (/^\+\d$/.test(k)) return nudgeKey(k);
     var before = m.content;
     if (k !== '(' && k !== ')' && k !== ':' && k !== '-') snap();
     m.key(k);
@@ -817,6 +854,19 @@ textarea#urlInput:focus{border-color:#2b4a78}
     if (m.msg) toast(m.msg);
     render();
     save();
+  }
+
+  /* ── nudge keys (+4 … +7): only live right after the dash ───── */
+  function nudgeKey(k) {
+    var n = parseInt(k.slice(1), 10);
+    var before = { c: m.content, l: m.links.slice() };
+    var res = m.nudge(n);
+    if (!res.ok) { toast(res.msg); return; }
+    undoStack.push(before);
+    if (undoStack.length > 50) undoStack.shift();
+    redoStack.length = 0;
+    render(); save();
+    toast('+' + n + 's → ' + res.end + (res.clamped ? ' · capped at 59:59' : '') + ' ✓');
   }
 
   /* ── quick paste — one tap, straight into the entry ─────────── */
